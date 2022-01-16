@@ -17,6 +17,7 @@ use APP\core\Application;
 use APP\facades\Repo;
 use APP\plugins\DOIPubIdExportPlugin;
 use PKP\file\FileManager;
+use PKP\file\TemporaryFileManager;
 
 // The status of the Crossref DOI.
 // any, notDeposited, and markedRegistered are reserved
@@ -47,8 +48,6 @@ class CrossRefExportPlugin extends DOIPubIdExportPlugin {
             if (!Config::getVar('general', 'installed') || defined('RUNNING_UPGRADE')) {
                 return true;
             }
-
-            HookRegistry::register('Schema::get::submission', [$this, 'addToSchema']);
         }
         return $success;
     }
@@ -89,7 +88,7 @@ class CrossRefExportPlugin extends DOIPubIdExportPlugin {
 		// return that message
 		$submissionId = $request->getUserVar('submissionId');
 		$preprint = Repo::submission()->get($submissionId);
-		$failedMsg = $preprint->getData($this->getFailedMsgSettingName());
+		$failedMsg = $preprint->getData('doiObject')->getData($this->getFailedMsgSettingName());
 		if (!empty($failedMsg)) {
 			return $failedMsg;
 		}
@@ -136,7 +135,7 @@ class CrossRefExportPlugin extends DOIPubIdExportPlugin {
 	 * @copydoc ImportExportPlugin::getPluginSettingsPrefix()
 	 */
 	function getPluginSettingsPrefix() {
-		return 'crossref';
+		return 'crossrefplugin';
 	}
 
 	/**
@@ -360,6 +359,7 @@ class CrossRefExportPlugin extends DOIPubIdExportPlugin {
 					$returnMessage = $msg . ' (' .$eStatusCode . ' ' . $e->getResponse()->getReasonPhrase() . ')';
 				} else {
 					$returnMessage = $eResponseBody . ' (' .$eStatusCode . ' ' . $e->getResponse()->getReasonPhrase() . ')';
+                    $this->updateDepositStatus($context, $objects, Doi::STATUS_ERROR, null, $returnMessage);
 				}
 			}
 			return [['plugins.importexport.common.register.error.mdsError', $returnMessage]];
@@ -408,7 +408,7 @@ class CrossRefExportPlugin extends DOIPubIdExportPlugin {
 	 * @param $batchId string
 	 * @param $failedMsg string (opitonal)
 	 */
-	function updateDepositStatus($context, $object, $status, $batchId, $failedMsg = null) {
+	function updateDepositStatus($context, $object, $status, $batchId = null, $failedMsg = null) {
 		assert($object instanceof \APP\submission\Submission);
         $doiIds = Repo::doi()->getDoisForSubmission($object->getId());
 
@@ -531,29 +531,6 @@ class CrossRefExportPlugin extends DOIPubIdExportPlugin {
 				break;
 		}
 	}
-
-    /**
-     * Add properties for Crossref to the entity's list for storage in the database.
-     * This is used for SchemaDAO-backed entities only.
-     *
-     * @param $hookName string `Schema::get::submission`
-     * @param $args array
-     */
-    public function addToSchema($hookName, $args) : bool
-    {
-        // TODO: #doi Duplicated, see if can be removed
-        $schema = & $args[0];
-        foreach ($this->_getObjectAdditionalSettings() as $settingName) {
-            $schema->properties->{$settingName} = (object) [
-                'type' => 'string',
-                'apiSummary' => true,
-                'validation' => ['nullable'],
-            ];
-        }
-
-        return false;
-    }
-
 }
 
 

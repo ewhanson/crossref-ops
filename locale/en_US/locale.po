@@ -17,6 +17,12 @@ msgstr "CrossRef XML Export Plugin"
 msgid "plugins.importexport.crossref.description"
 msgstr "Export preprint metadata in CrossRef XML format."
 
+msgid "plugins.generic.crossref.displayName"
+msgstr "Crossref Manager Plugin"
+
+msgid "plugins.generic.crossref.description"
+msgstr "Handles depositing and exporting Crossref metadata"
+
 msgid "plugins.importexport.crossref.requirements"
 msgstr "Requirements"
 
